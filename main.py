@@ -1,12 +1,11 @@
 import os
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from google import genai
 
 app = FastAPI(title="My AI API", version="1.0")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-MY_API_KEY = os.getenv("MY_API_KEY")
 
 if not GEMINI_API_KEY:
     raise RuntimeError("GEMINI_API_KEY is missing")
@@ -27,16 +26,7 @@ def home():
 
 
 @app.post("/v1/chat")
-def chat(
-    request: ChatRequest,
-    authorization: str | None = Header(default=None)
-):
-
-    if authorization != f"Bearer {MY_API_KEY}":
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid API key"
-        )
+def chat(request: ChatRequest):
 
     if not request.message.strip():
         raise HTTPException(
@@ -44,11 +34,18 @@ def chat(
             detail="Message cannot be empty"
         )
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=request.message
-    )
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=request.message
+        )
 
-    return {
-        "response": response.text
-    }
+        return {
+            "response": response.text
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
